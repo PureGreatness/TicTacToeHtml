@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jogo do Galo</title>
+    <style>
+        /* Estilos CSS */
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            width: 100px;
+            height: 100px;
+            background-color: #f2f2f2;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .cell:hover {
+            background-color: #eaeaea;
+        }
+
+        .restart-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .restart-btn:hover {
+            background-color: #45a049;
+        }
+
+        .stats {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jogo do Galo</h1>
+        <div class="board">
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+        </div>
+        <button class="restart-btn">Reiniciar</button>
+        <div class="stats">
+            <p>Vitórias: <span id="wins">0</span></p>
+            <p>Derrotas: <span id="losses">0</span></p>
+            <p>Empates: <span id="draws">0</span></p>
+        </div>
+
+        <script>
+            // Código JavaScript
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const board = document.querySelector('.board');
+                const cells = document.querySelectorAll('.cell');
+                const restartBtn = document.querySelector('.restart-btn');
+                const winsCount = document.querySelector('#wins');
+                const lossesCount = document.querySelector('#losses');
+                const drawsCount = document.querySelector('#draws');
+
+                let currentPlayer = 'X';
+                let gameEnded = false;
+                let wins = 0;
+                let losses = 0;
+                let draws = 0;
+
+                const winningCombinations = [
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Linhas
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Colunas
+                    [0, 4, 8], [2, 4, 6] // Diagonais
+                ];
+
+                const restartGame = () => {
+                    currentPlayer = 'X';
+                    gameEnded = false;
+
+                    cells.forEach(cell => {
+                        cell.textContent = '';
+                        cell.classList.remove('highlight');
+                    });
+                };
+
+                const checkGameEnd = () => {
+                    const boardState = Array.from(cells).map(cell => cell.textContent);
+                    let winner = null;
+
+                    winningCombinations.forEach(combination => {
+                        const [a, b, c] = combination;
+
+                        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                            winner = boardState[a];
+                            combination.forEach(index => cells[index].classList.add('highlight'));
+                        }
+                    });
+
+                    if (winner) {
+                        gameEnded = true;
+
+                        if (winner === 'X') {
+                            wins++;
+                        } else {
+                            losses++;
+                        }
+                    } else if (boardState.every(cell => cell !== '')) {
+                        gameEnded = true;
+                        draws++;
+                    }
+
+                    winsCount.textContent = wins;
+                    lossesCount.textContent = losses;
+                    drawsCount.textContent = draws;
+                };
+
+                const makeBotMove = () => {
+                    const boardState = Array.from(cells).map(cell => cell.textContent);
+
+                    const bestMove = minimax(boardState, currentPlayer).index;
+
+                    if (bestMove !== null) {
+                        cells[bestMove].textContent = currentPlayer;
+                        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+
+                        checkGameEnd();
+                    }
+                };
+
+                const minimax = (board, player) => {
+                    const availableMoves = getAvailableMoves(board);
+
+                    if (checkWin(board, 'X')) {
+                        return { score: -1 };
+                    } else if (checkWin(board, 'O')) {
+                        return { score: 1 };
+                    } else if (availableMoves.length === 0) {
+                        return { score: 0 };
+                    }
+
+                    const moves = [];
+
+                    for (let i = 0; i < availableMoves.length; i++) {
+                        const move = {};
+
+                        move.index = availableMoves[i];
+                        board[availableMoves[i]] = player;
+
+                        if (player === 'O') {
+                            const result = minimax(board, 'X');
+                            move.score = result.score;
+                        } else {
+                            const result = minimax(board, 'O');
+                            move.score = result.score;
+                        }
+
+                        board[availableMoves[i]] = '';
+                        moves.push(move);
+                    }
+
+                    let bestMove;
+
+                    if (player === 'O') {
+                        let bestScore = -Infinity;
+                        for (let i = 0; i < moves.length; i++) {
+                            if (moves[i].score > bestScore) {
+                                bestScore = moves[i].score;
+                                bestMove = i;
+                            }
+                        }
+                    } else {
+                        let bestScore = Infinity;
+                        for (let i = 0; i < moves.length; i++) {
+                            if (moves[i].score < bestScore) {
+                                bestScore = moves[i].score;
+                                bestMove = i;
+                            }
+                        }
+                    }
+
+                    return moves[bestMove];
+                };
+
+                const getAvailableMoves = board => {
+                    const availableMoves = [];
+
+                    for (let i = 0; i < board.length; i++) {
+                        if (board[i] === '') {
+                            availableMoves.push(i);
+                        }
+                    }
+
+                    return availableMoves;
+                };
+
+                const checkWin = (board, player) => {
+                    for (let i = 0; i < winningCombinations.length; i++) {
+                        const [a, b, c] = winningCombinations[i];
+
+                        if (board[a] === player && board[b] === player && board[c] === player) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                };
+
+                cells.forEach(cell => {
+                    cell.addEventListener('click', () => {
+                        if (!cell.textContent && !gameEnded) {
+                            cell.textContent = currentPlayer;
+
+                            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+
+                            checkGameEnd();
+
+                            if (!gameEnded) {
+                                makeBotMove();
+                            }
+                        }
+                    });
+                });
+
+                restartBtn.addEventListener('click', restartGame);
+            });
+        </script>
+    </div>
+</body>
+</html>
+
